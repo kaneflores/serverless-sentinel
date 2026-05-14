@@ -1,0 +1,32 @@
+{
+  "queues.billableOperations": {
+    "monthly": 1000000
+  },
+  "d1.rowsRead": {
+    "monthly": 25000000000
+  },
+  "d1.rowsWritten": {
+    "monthly": 50000000
+  },
+  "workers.requests": {
+    "monthly": 10000000
+  },
+  "workers.subrequests": {
+    "monthly": 1000000000
+  },
+  "r2.app.classAOperations": {
+    "monthly": 1000000
+  },
+  "r2.app.classBOperations": {
+    "monthly": 10000000
+  },
+  "durableObjects.requests": {
+    "monthly": 1000000
+  },
+  "durableObjects.rowsRead": {
+    "monthly": 25000000000
+  },
+  "durableObjects.rowsWritten": {
+    "monthly": 50000000
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "serverless-sentinel",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.33.4",
+  "scripts": {
+    "check": "pnpm --filter serverless-sentinel-cloudflare-reference check",
+    "test": "pnpm --filter serverless-sentinel-cloudflare-reference test",
+    "wrangler:dry-run": "pnpm --filter serverless-sentinel-cloudflare-reference wrangler:dry-run"
+  }
+}

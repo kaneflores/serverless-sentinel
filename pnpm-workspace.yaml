@@ -1,0 +1,13 @@
+packages:
+  - references/cloudflare/worker
+
+minimumReleaseAge: 1440
+blockExoticSubdeps: true
+strictDepBuilds: true
+savePrefix: ""
+
+allowBuilds:
+  esbuild: true
+  fsevents: true
+  sharp: true
+  workerd: true

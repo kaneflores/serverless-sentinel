@@ -1,0 +1,20 @@
+{
+  "name": "serverless-sentinel-cloudflare-reference",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "wrangler:dry-run": "wrangler deploy --dry-run",
+    "check": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "4.20260503.1",
+    "miniflare": "4.20260430.0",
+    "typescript": "5.7.2",
+    "vitest": "3.2.4",
+    "wrangler": "4.87.0"
+  }
+}

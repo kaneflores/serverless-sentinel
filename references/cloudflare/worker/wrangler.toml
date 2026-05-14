@@ -1,0 +1,74 @@
+name = "replace-with-sentinel-worker-name"
+main = "src/index.ts"
+compatibility_date = "2026-05-01"
+# This exposes the reference implementation health endpoint on workers.dev. Production deployments
+# may prefer workers_dev = false plus explicit routes.
+workers_dev = true
+preview_urls = false
+
+[observability]
+enabled = false
+# Enable deliberately when you want Workers Logs for debugging or production operations.
+# If enabled, choose a sampling rate appropriate for your traffic and cost tolerance.
+# head_sampling_rate = 0.1
+
+[triggers]
+crons = ["*/5 * * * *"]
+
+# Add one queue producer binding for each queue you want to sample with
+# env.<BINDING>.metrics(). The sentinel must not call send() or sendBatch().
+[[queues.producers]]
+binding = "APP_QUEUE"
+queue = "replace-with-app-queue-name"
+
+[[r2_buckets]]
+binding = "SNAPSHOTS_BUCKET"
+bucket_name = "replace-with-sentinel-snapshots-bucket"
+
+[[d1_databases]]
+binding = "LEDGER_DB"
+database_name = "replace-with-sentinel-ledger-db"
+database_id = "replace-with-sentinel-ledger-d1-id"
+migrations_dir = "../migrations/ledger"
+
+[[d1_databases]]
+binding = "APP_BRAKE_DB"
+# Prefer a dedicated narrow brake database/table when possible. Binding an
+# existing app database gives the sentinel Worker write access to that database;
+# if you bind an app-owned DB, apply/adapt the brake schema in the app's own
+# migration flow instead of using this reference migration path.
+database_name = "replace-with-dedicated-brake-db"
+database_id = "replace-with-dedicated-brake-d1-id"
+migrations_dir = "../migrations/app-brake"
+
+[vars]
+CLOUDFLARE_ACCOUNT_ID = "replace-with-cloudflare-account-id"
+SENTINEL_SNAPSHOT_PREFIX = "serverless-sentinel-dev"
+SENTINEL_QUEUE_BINDINGS = "APP_QUEUE"
+# Comma-separated Worker script names to scope Workers GraphQL metrics.
+# Leave blank only for account-wide observation; set before enabling app-scoped protect mode.
+SENTINEL_WORKER_SCRIPT_NAMES = ""
+SENTINEL_CADENCE_MINUTES = "5"
+SENTINEL_LEDGER_SERIES_ID = "default-5m"
+SENTINEL_D1_LEDGER_ENABLED = "true"
+SENTINEL_BUDGETS_JSON = "[]"
+SENTINEL_ALLOWANCES_JSON = "{}"
+# Supported values: "observe" or "protect". Observe mode never writes the app brake.
+# Protect mode requires LEDGER_DB, SENTINEL_D1_LEDGER_ENABLED=true, SNAPSHOTS_BUCKET,
+# and APP_BRAKE_DB before a brake can be written.
+SENTINEL_MODE = "observe"
+# The app must read the same brake key at its admission/producer boundaries.
+# Use "global" for one whole-app brake; use narrower keys only with matching app checks.
+SENTINEL_APP_BRAKE_KEY = "global"
+SENTINEL_APP_BRAKE_RELEASE_MODE = "manual"
+SENTINEL_APP_BRAKE_PAUSE_MINUTES = "60"
+SENTINEL_NOTIFY_WEBHOOK_ENABLED = "false"
+SENTINEL_NOTIFY_OBSERVE_FINDINGS = "false"
+# Supported values: "discord" or "generic_json".
+SENTINEL_NOTIFY_WEBHOOK_KIND = "discord"
+
+# Required secrets:
+#   CLOUDFLARE_OBSERVER_API_TOKEN
+# Optional secrets:
+#   SENTINEL_NOTIFY_WEBHOOK_URL
+#   SENTINEL_NOTIFY_DISCORD_USER_ID

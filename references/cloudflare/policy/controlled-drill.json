@@ -1,0 +1,12 @@
+[
+  {
+    "id": "controlled_drill_known_nonzero_1tick",
+    "metric": "replace-with-known-nonzero-metric",
+    "windowTicks": 1,
+    "kind": "absolute_units",
+    "max": 1,
+    "level": "critical",
+    "actionMode": "eligible_after_gates",
+    "requiredFreshness": "allow_partial"
+  }
+]
