@@ -43,6 +43,8 @@ This repo uses pnpm with a committed lockfile, delayed-package install settings,
 
 The reference implementation Worker is intentionally conservative. It currently collects Workers GraphQL additive deltas for `workers.requests`, `workers.errors`, and `workers.subrequests`, plus queue backlog and byte gauges from Queue binding `metrics()`. A production adaptation should expand metric coverage and budget rules based on the audit findings for the target app.
 
+`workers.subrequests` is included as a fanout-pressure signal, not as a Workers Paid allowance metric; see the metrics reference before using it in policy.
+
 Choose metrics from the audit, not from a universal checklist. Store additive per-tick usage as rolling usage metrics, keep current-state values such as queue backlog as current-state diagnostics, and omit metrics for Cloudflare products the app does not use. For R2 policies, Class A/Class B operation counts may need to be derived from bucket/action operation metrics; exclude sentinel snapshot buckets from app-scoped R2 rules.
 
 Rolling policy windows require the D1 ledger. Use `windowTicks: 1` for explicit current-tick observations; do not expect multi-tick rules to fall back to current-tick behavior when the ledger is disabled.
@@ -53,46 +55,17 @@ The Wrangler reference disables Workers Logs observability by default. Enable `[
 
 Account-wide Worker rules can be useful for account-level spend protection. If an account-wide critical rule is allowed to brake, set `"acceptsAccountWideBrake": true` and understand the tradeoff: the default app brake only pauses code paths wired to read the brake, so it may not stop the Worker causing spend if that Worker is outside the brake integration. Scope mismatches block action eligibility.
 
-## Metric Source Caveats
+## Worker Behavior And Pointers
 
-Cloudflare GraphQL Analytics is a spend-pressure signal, not Cloudflare billing source of truth. Cloudflare's GraphQL Analytics docs say these datasets should not be used as the measure for usage that Cloudflare bills, because billable traffic can exclude activity that GraphQL still counts as measurable usage. GraphQL-backed allowance rules should therefore be treated as conservative anomaly guards rather than exact invoice or entitlement checks.
+The reference implementation Worker starts in `observe` mode. It can collect metrics, evaluate policies, and write snapshots without mutating app state. `protect` mode allows a critical policy candidate to write the reversible app brake after prerequisites and gates pass.
 
-Malformed GraphQL rows and partial multi-script GraphQL failures create lower-bound telemetry gaps. Valid rows are still counted, and an `allow_partial` rule can remain action-eligible when trusted observed usage already exceeds the threshold. Use `requiredFreshness: "complete"` when lower-bound gaps should block action.
+Only make a budget rule action-eligible after confirming the adapted Worker collects that metric and writes it to the ledger. The bundled Workers Paid-shaped policy is a development reference and a starting shape for production adaptation; start production with observe-only or warning rules before enabling reversible brake actions.
 
-`SENTINEL_MODE` is the main operating-mode switch:
+Detailed behavior lives in the skill references:
 
-- `observe`: collect metrics, evaluate policies, write snapshots when R2 is configured, and never write the app brake.
-- `protect`: allow the sentinel to write the app brake when critical policy candidates pass all gates.
-
-Protect mode requires `LEDGER_DB`, `SENTINEL_D1_LEDGER_ENABLED=true`, `SNAPSHOTS_BUCKET`, and `APP_BRAKE_DB`. Missing protect-mode prerequisites block app-brake writes. A runtime R2 write failure after the bucket is configured does not block a valid brake; the Worker records the degraded evidence condition and proceeds using D1 policy evidence. Any protect-mode brake with failed R2 evidence should be investigated, and repeated brakes without successful snapshots indicate broken evidence storage or insufficient R2 permissions.
-
-`SENTINEL_APP_BRAKE_KEY` names the pause switch this sentinel controls. Use `global` for one whole-app brake. Use narrower keys such as `ingest`, `embeddings`, or `tenant:<id>` only if the application has matching brake checks that read those keys. A non-global key does nothing unless the app checks that same key at admission or producer boundaries.
-
-Keep `SENTINEL_LEDGER_SERIES_ID` tied to the cadence and metric schema. Changing `SENTINEL_CADENCE_MINUTES` should start a new ledger series, such as `default-2m`, so rolling windows do not mix incompatible tick grids.
-
-Ledger metric ticks are append-once. A second run for the same `(series_id, metric, tick_id)` does not rewrite the D1 policy ledger; this keeps cumulative rolling-window math stable. The tradeoff is that later, more complete analytics for that same tick are not retroactively applied.
-
-Delayed older ticks are skipped once a newer tick has advanced the metric state. That protects the cumulative ledger from out-of-order odometer corruption. The skipped tick remains visible to policy evaluation as missing data, so `complete` rules block and `allow_partial` rules can still act only from observed usage.
-
-The ledger writes one row per expected additive metric per tick. Successful source reads write the observed value with no gap. Failed source reads write a zero-value row with a gap count, so future rolling windows remember that telemetry was missing instead of treating the failed tick as clean zero usage. Cumulative usage, cumulative gap count, and `cumulative_recorded_tick_count` let policy checks compute usage and freshness by subtracting boundary rows instead of scanning every retained row in the window.
-
-This reference implementation does not prune the ledger automatically. That is deliberate: pruning adds retention math, boundary-row safety checks, and operational failure modes. The tradeoff is linear storage growth over time, plus gradually larger database indexes and backups. Rolling-window queries should stay bounded by indexed cumulative boundary lookups. A 30-day window at a five-minute cadence is `8,640` ticks, but the cumulative query needs the current row and the row before the window rather than a scan of all `8,640` rows.
-
-Retention must keep at least the largest configured window plus one boundary row per metric; for instance, a 288-tick largest window needs at least 289 retained rows.
-
-If the boundary row is missing but retained rows prove prior cumulative history existed, the Worker uses a bounded-sum fallback over the requested window. This is a slower defensive branch for unsafe retention/pruning states, not the normal query path.
-
-If you later add pruning, never delete the latest accepted `sentinel_metric_ticks` row for a metric while leaving its `sentinel_metric_state` row behind. The write guard will skip future rows rather than restart cumulative math from unsafe state.
-
-Only make a budget rule action-eligible after confirming the adapted Worker collects that metric and writes it to the ledger.
-
-The bundled Workers Paid-shaped policy is a development reference and a starting shape for production adaptation. Production rules should be based on current plan allowances, observed normal traffic, expected peak user activity, anomaly definitions, spend-risk tolerance, and the user impact of a brake triggering. Start production with observe-only or warning rules before enabling reversible brake actions.
-
-Every budget rule must declare `requiredFreshness`. Use `"allow_partial"` when observed usage should be allowed to trigger protection before the whole window is available or after a telemetry gap. Use `"complete"` when every tick in the window must be present and clean before the rule can act. Avoid relying only on long windows with `"complete"`: a complete 24-hour window cannot evaluate until 24 hours of ticks exist, and one telemetry gap can prevent action until that gap ages out of the rolling window. Pair long strict windows with short `allow_partial` spike rules if the sentinel should protect immediately after deployment.
-
-Forecasting and projected burn-rate predicates are intentionally omitted from the reference implementation Worker. The bundled action predicates use observed usage windows only.
-
-If the adapted policy set becomes large, move it into reviewed code or a generated preset instead of stuffing a large JSON blob into a Worker text binding.
+- Metrics, policy rules, GraphQL caveats, freshness, Worker metric scope, ledger continuity, and retention: `../../skills/cloudflare-sentinel/references/cloudflare-metrics.md`
+- Reversible app-brake storage, brake keys, cache behavior, and protect-mode action semantics: `../../skills/cloudflare-sentinel/references/brake-design.md`
+- Validation drills, evidence expectations, and controlled action tests: `../../skills/cloudflare-sentinel/references/validation-playbook.md`
 
 For a controlled action drill, replace the metric and threshold in `policy/controlled-drill.json` with a harmless metric that reliably exceeds the positive threshold in the target dev environment. Restore the normal policy immediately after the drill.
 

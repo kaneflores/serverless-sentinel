@@ -22,6 +22,8 @@ Useful metric families:
 
 The reference implementation Worker is not a complete Cloudflare metrics collector. During adaptation, add product-specific metrics for the target app's actual billable surfaces. For instance, if the app uses Workers AI, add the relevant usage metrics such as requests or tokens where available. If the app uses Durable Objects heavily, add DO request or storage read/write metrics where available. Do not add those metrics for apps that do not use those products.
 
+Treat `workers.subrequests` as a fanout-pressure signal, not as a direct Workers billing allowance. Current Workers pricing does not bill Worker subrequests as their own Workers line item, although subrequests can drive billable usage on downstream products such as R2, D1, KV, Queues, or Durable Objects. If a target app needs a subrequest guard, prefer an app-specific `absolute_units` warning based on observed normal fanout rather than an allowance-fraction rule.
+
 Prefer metrics that can be collected by a scheduled Worker without interactive CLI state.
 
 Metric selection rule:

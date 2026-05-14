@@ -11,9 +11,6 @@
   "workers.requests": {
     "monthly": 10000000
   },
-  "workers.subrequests": {
-    "monthly": 1000000000
-  },
   "r2.app.classAOperations": {
     "monthly": 1000000
   },

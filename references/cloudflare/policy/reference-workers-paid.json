@@ -12,33 +12,8 @@
     "requiredFreshness": "allow_partial"
   },
   {
-    "id": "workers_subrequests_2h_warn",
-    "metric": "workers.subrequests",
-    "metricScope": "account",
-    "windowTicks": 24,
-    "kind": "allowance_fraction",
-    "allowancePeriod": "monthly",
-    "maxFraction": 0.01,
-    "level": "warn",
-    "actionMode": "observe_only",
-    "requiredFreshness": "allow_partial"
-  },
-  {
     "id": "workers_requests_6h_critical",
     "metric": "workers.requests",
-    "metricScope": "account",
-    "acceptsAccountWideBrake": true,
-    "windowTicks": 72,
-    "kind": "allowance_fraction",
-    "allowancePeriod": "monthly",
-    "maxFraction": 0.1,
-    "level": "critical",
-    "actionMode": "eligible_after_gates",
-    "requiredFreshness": "allow_partial"
-  },
-  {
-    "id": "workers_subrequests_6h_critical",
-    "metric": "workers.subrequests",
     "metricScope": "account",
     "acceptsAccountWideBrake": true,
     "windowTicks": 72,
