@@ -203,3 +203,7 @@ The first supported target is Cloudflare Workers, Queues, D1, R2, Durable Object
 ## Credits
 
 Created by Eric Phillips. Developed with Codex and GPT-5.5.
+
+## Forks
+
+--Forked by Kane Flores on 6/17/2026
